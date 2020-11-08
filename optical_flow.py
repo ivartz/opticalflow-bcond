@@ -14,7 +14,7 @@ import os
 from skimage.transform import warp
 
 
-def plot_flow(image, flow, slice_num, step=4, save_file=True):
+def plot_flow(image, flow, slice_num, step=4, p=None, use_skimage=True, save_file=True):
     """Plot the 2D optical flow.
 
     Parameters
@@ -27,6 +27,10 @@ def plot_flow(image, flow, slice_num, step=4, save_file=True):
         Slice number of the volume.
     step : int
         Step size for downsampling the flow along each axis.
+    p : None or int
+        Percentile to select only more significant motion.
+    use_skimage : bool
+        Use optical flow algorithms in skimage. The format of returned flow differs between skimage and opencv.
     save_file : bool
         True to save to motion/ folder, False to plot the result.
 
@@ -35,24 +39,22 @@ def plot_flow(image, flow, slice_num, step=4, save_file=True):
 
     """
     # img0 = np.rot90(ref_img[:, :, i], k=-2)
-        # img1 = np.rot90(warped_img[:, :, i], k=-2)
-    plot_skimage = True  # skimage and opencv return estimated flow with different order
-    use_percentile = True
+    # img1 = np.rot90(warped_img[:, :, i], k=-2)
 
-    v, u = flow if plot_skimage else flow[:, :, 1], flow[:, :, ,0]
+    v, u = (flow[0], flow[1]) if use_skimage else (flow[:, :, 1], flow[:, :, 0])
     # u, v = flow[...,0], flow[...,1]  # opencv
     # v, u = flow[0], flow[1]  # skimage
     norm = np.sqrt(v ** 2 + u ** 2)
 
     # Select more significant motion/displacements
-    if use_percentile:
-        p = np.percentile(norm, 90)
-        mask = norm > p
+    if p:
+        thresh = np.percentile(norm, p)
+        mask = norm > thresh
         v *= mask
         u *= mask
         norm *= mask
-    # fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10, 7))
-    fig, ax0 = plt.subplots(1, 1, figsize=(10, 7))
+    # fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10, 7))  # plot reference and magnitude (and direction)
+    fig, ax0 = plt.subplots(1, 1, figsize=(10, 7))  # plot only reference and direction
     ax0.imshow(image, cmap='gray')
     ax0.set_title("Reference image, step=%d, slice %d" % (step, slice_num))
     ax0.set_axis_off()
@@ -77,17 +79,6 @@ def plot_flow(image, flow, slice_num, step=4, save_file=True):
         plt.show()
 
 
-def estimate_2d_motion(reference, warped, slice_num, nvec=20, save_file=True):
-    """Estimate the 2D motion using optical flow.
-    """
-    # v, u = optical_flow_ilk(ref, warped, radius=4)
-    # v, u = optical_flow_tvl1(ref, warped)
-
-    plot_flow(ref, np.stack((v, u), axis=-1))
-    # # flow = cv2.calcOpticalFlowFarneback(ref, warped, None, 0.8,15,5,10,5,0,10)
-    # # v, u = flow[:,:,0], flow[:,:,1]
-
-
 def estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=None, save_file=True):
     """Estimate the 3D motion/displacements between two registered 3D volume by
     applying optical flow for each pair of slices.
@@ -101,7 +92,7 @@ def estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=None, 
     slice_range : None or list
         Range of slices for motion estimation.
     save_file : bool
-        Save the file in the folder motion/ or plot the result.
+        True to save to motion/ folder, False to plot the result.
 
     Returns
     -------
@@ -120,8 +111,9 @@ def estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=None, 
     all_flow = np.zeros((image_shape[2], 2, *(image_shape[:2])))  # store each 2D flow
     for i in slice_range:
         print(i)
-        image0, image1 = ref_img[:, :, i], warped_image[:, :, i]
+        image0, image1 = reference_image[:, :, i], warped_image[:, :, i]
         all_flow[i] = optical_flow_ilk(image0, image1, radius=7)
+        plot_flow(image0, all_flow[i], i, save_file=save_file)
 
     return all_flow
 
@@ -142,9 +134,11 @@ def estimate_3d_motion(reference_image, warped_image, save_file=False):
         The estimated 3D optical flow for each axis.
 
     """
+    # Use default data type, i.e. float64
+    reference_image = reference_image.astype(np.float64)
+    warped_image = warped_image.astype(np.float64)
 
     # For using 3D iterative LK algorithm in skimage, the input needs to be normalized
-    # Use default data type, i.e. float64
     reference_image /= reference_image.max()
     warped_image /= warped_image.max()
 
@@ -152,6 +146,17 @@ def estimate_3d_motion(reference_image, warped_image, save_file=False):
     motion = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
 
     return motion
+
+
+def estimate_2d_motion(reference, warped, slice_num, nvec=20, save_file=True):
+    """Estimate the 2D motion using optical flow.
+    """
+    # v, u = optical_flow_ilk(ref, warped, radius=4)
+    v, u = optical_flow_tvl1(ref, warped)
+
+    plot_flow(ref, np.stack((v, u), axis=-1))
+    # # flow = cv2.calcOpticalFlowFarneback(ref, warped, None, 0.8,15,5,10,5,0,10)
+    # # v, u = flow[:,:,0], flow[:,:,1]
 
 
 def optical_flow_opencv(ref, warped):
@@ -170,39 +175,39 @@ def optical_flow_opencv(ref, warped):
 
 
 if __name__ == "__main__":
-    n = 70
-    ref_img_org = nib.load("T1c.nii.gz")  # nib.load("2-T1c.nii.gz")
-    ref_img = nib.load("T1c.nii.gz").get_fdata().astype(np.uint8)  # "2-T1c.nii.gz"
-    # warped_img = nib.load("3-T1c.nii.gz").get_fdata().astype(np.uint8)
-    warped_img = nib.load("warped.nii.gz").get_fdata().astype(np.uint8)
-    # truth = nib.load("interp-field-8.0mm.nii.gz").get_fdata().astype(np.uint8) #.transpose([2,1,0,3])
-    print("Reference image: ", ref_img.shape)
+    reference_image_org = nib.load("T1c.nii.gz")  # nib.load("2-T1c.nii.gz")
+    reference_image = nib.load("T1c.nii.gz").get_fdata()  # convert data type when needed
+    # warped_image = nib.load("3-T1c.nii.gz").get_fdata().astype(np.uint8)
+    warped_image = nib.load("warped.nii.gz").get_fdata()  # convert data type when needed
+    # truth = nib.load("interp-field-8.0mm.nii.gz").get_fdata()
+    print("Reference image: ", reference_image.shape)
 
-    # ref_img /= ref_img.max()
-    # warped_img /= warped_img.max()
-
-    # slice_range = range(40, 72) # range(60, 80)# ref_img.shape[0])
+    # slice_range = range(40, 72) # range(60, 80)
     # slice_range = range(30, 90)
     # slice_range = range(115, 116)
     slice_range = range(70, 71)
 
-    # all_flow = estimate_3d_motion_from_2d(ref_img, warped_img, slice_range=slice_range, save_file=True)
+    # Calculate all 2D flow and plot/save it
+    all_flow = estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=slice_range, save_file=False)
+    print("All 2D flow: (%f, %f)" %(all_flow.min(), all_flow.max()))
 
-    # flow_3d = estimate_3d_motion(ref_img, warped_img)
-    # flow_img = nib.spatialimages.SpatialImage(np.transpose(flow_3d, (1,2,3,0)),
-    #                                           affine=ref_img_org.affine, header=ref_img_org.header)
+    # Calculate 3D flow and save it
+    # flow_3d = estimate_3d_motion(reference_image, warped_image)
+    # print("3D flow: (%f, %f)" %(flow_3d.min(), flow_3d.max()))
+    # flow_img = nib.spatialimages.SpatialImage(np.transpose(flow_3d, (1,2,3,0)),  # displacements as last axis
+    #                                           affine=reference_image_org.affine, header=reference_image_org.header)
     # nib.save(flow_img, "3d_flow.nii.gz")
 
-    for i in slice_range:
-        ref = ref_img[:, :, i]
-        warped = warped_img[:, :, i]
-        # ref = ref_img[:, i, :]  # coronal
-        # warped = warped_img[:, i, :]  # coronal
-
-        flow = optical_flow_opencv(ref, warped)
-        print("Flow: ", flow.min(), flow.max())
-        print("Range of displacements: ", flow.min(), flow.max())
-        plot_flow(ref, flow, i, save_file=False)
+    # for i in slice_range:
+    #     ref = reference_image[:, :, i]  # axial: x-y plane
+    #     warped = warped_image[:, :, i]
+    #     # ref = ref_img[:, i, :]  # coronal: x-z plane
+    #     # warped = warped_img[:, i, :]
+    #
+    #     flow = optical_flow_opencv(ref, warped)  # calculate optical flow using opencv
+    #     print("Flow: ", flow.min(), flow.max())
+    #     print("Range of displacements: ", flow.min(), flow.max())
+    #     plot_flow(ref, flow, i, save_file=False)
 
     # flow = optical_flow_ilk(ref_img, warped_img)
     # print("(%f, %f)" %(flow.min(), flow.max()))
