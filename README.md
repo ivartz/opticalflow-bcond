@@ -3,6 +3,6 @@ Examining the boundary conditions for the clinical relevance of Optical Flow dis
 
 
 ## Install latest scikit-image
-git clone https://github.com/scikit-image/scikit-image.git
-cd scikit-image
-pip install -e .
+git clone https://github.com/scikit-image/scikit-image.git \\
+cd scikit-image \\
+pip install -e . \\
