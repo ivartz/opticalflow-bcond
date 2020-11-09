@@ -114,7 +114,12 @@ def estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=None, 
     for i in slice_range:
         print(i)
         image0, image1 = reference_image[:, :, i], warped_image[:, :, i]
-        all_flow[i] = optical_flow_ilk(image0, image1, radius=7)
+        all_flow[i] = optical_flow_ilk(image0, image1, radius=5)
+        nr, nc = image0.shape
+        row_coords, col_coords = np.meshgrid(np.arange(nr), np.arange(nc), indexing='ij')
+        estimated_warp = warp(image1, np.array([row_coords+all_flow[i][0], col_coords+all_flow[i][1]]), mode='nearest')
+        plt.imshow(estimated_warp, cmap='jet')
+        plt.show()
         plot_flow(image0, all_flow[i], i, save_file=save_file)
 
     return all_flow
@@ -193,8 +198,8 @@ if __name__ == "__main__":
     print("All 2D flow: (%f, %f)" %(all_flow.min(), all_flow.max()))
 
     # Calculate 3D flow and save it
-    flow_3d = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
-    print("3D flow: (%f, %f)" %(flow_3d.min(), flow_3d.max()))
+    # flow_3d = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
+    # print("3D flow: (%f, %f)" %(flow_3d.min(), flow_3d.max()))
     # flow_img = nib.spatialimages.SpatialImage(np.transpose(flow_3d, (1,2,3,0)),  # displacements as last axis
     #                                           affine=reference_image_org.affine, header=reference_image_org.header)
     # nib.save(flow_img, "3d_flow.nii.gz")
