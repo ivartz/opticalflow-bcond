@@ -125,7 +125,7 @@ def estimate_3d_motion_from_2d(reference_image, warped_image, slice_range=None, 
     return all_flow
 
 
-def estimate_3d_motion(reference_image, warped_image, save_file=False):
+def estimate_3d_motion(reference_image, warped_image, save_file=False, reference_image_orgin=None):
     """Directly estimate the 3D motion between two 3D volumes using optical flow.
 
     Parameters
@@ -134,6 +134,10 @@ def estimate_3d_motion(reference_image, warped_image, save_file=False):
         Reference image.
     warped_image : 3D array
         Warped image.
+    save_file : bool
+        Save the 3D flow to file
+    reference_image_orgin : nifti object
+        Provide the header information used when saving nifti files.
 
     Returns
     -------
@@ -142,9 +146,19 @@ def estimate_3d_motion(reference_image, warped_image, save_file=False):
 
     """
     # w, v, u = optical_flow_tvl1(ref_img, warped_img)
-    motion = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
+    flow = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
 
-    return motion
+    if save_file:
+        try:  # check if nifti object provided correctly
+            flow_image = nib.spatialimages.SpatialImage(np.transpose(flow, (1, 2, 3, 0)),  # displacements as last axis
+                                                        affine=reference_image_origin.affine,
+                                                        header=reference_image_origin.header)
+        except:
+            print("Original nifti object not provided or with wrong format!")
+            return
+        nib.save(flow_image, "3d_flow.nii.gz")
+
+    return flow
 
 
 def estimate_2d_motion(ref, warped, slice_num, nvec=20, save_file=True):
@@ -176,7 +190,7 @@ def optical_flow_opencv(ref, warped):
 
 
 if __name__ == "__main__":
-    reference_image_org = nib.load("T1c.nii.gz")  # nib.load("2-T1c.nii.gz")
+    reference_image_origin = nib.load("T1c.nii.gz")  # nib.load("2-T1c.nii.gz")
     reference_image = nib.load("T1c.nii.gz").get_fdata().astype(np.float64)  # convert data type when needed
     # warped_image = nib.load("3-T1c.nii.gz").get_fdata().astype(np.float64)
     warped_image = nib.load("warped.nii.gz").get_fdata().astype(np.float64)  # convert data type when needed
@@ -201,7 +215,7 @@ if __name__ == "__main__":
     # flow_3d = optical_flow_ilk(reference_image, warped_image, radius=7)  # radius can be tuned
     # print("3D flow: (%f, %f)" %(flow_3d.min(), flow_3d.max()))
     # flow_img = nib.spatialimages.SpatialImage(np.transpose(flow_3d, (1,2,3,0)),  # displacements as last axis
-    #                                           affine=reference_image_org.affine, header=reference_image_org.header)
+    #                                           affine=reference_image_origin.affine, header=reference_image_origin.header)
     # nib.save(flow_img, "3d_flow.nii.gz")
 
     # Test motion for coronal (x-z) plane
