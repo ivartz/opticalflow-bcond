@@ -2,7 +2,7 @@ run_evals=1
 
 patientdir=$1
 fixedimg="$patientdir/T1c.nii.gz"
-oftype="ofilk"
+oftype="oftvl1"
 
 # Make array of patient models, full paths
 readarray -t models < <(find $patientdir -mindepth 1 -maxdepth 1 -type d | sort)
