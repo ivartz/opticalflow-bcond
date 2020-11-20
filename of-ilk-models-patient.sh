@@ -14,7 +14,7 @@ for model in ${models[*]}; do
         eval $c
     fi
     movingimg="$model/warped.nii.gz"
-    c="python3 of-ilk.py $fixedimg $movingimg $outdir/flow.nii.gz"
+    c="python3 of-ilk.py $movingimg $fixedimg $outdir/neg-flow.nii.gz"
     if [ $run_evals == 1 ]; then
         eval $c
     fi
