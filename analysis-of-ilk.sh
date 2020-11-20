@@ -16,29 +16,29 @@ Segmentation.nii.gz:
 model=$1
 res="ofilk"
 
-# Vectors to show the error: GT - estimated displacement
-c="fslmaths $model/interp-field-*.*mm.nii.gz -sub $model/$res/flow.nii.gz $model/$res/diff.nii.gz"
+# Vectors to show the error: GT - estimated displacement, Opposite direction
+c="fslmaths $model/interp-neg-field-*.*mm.nii.gz -sub $model/$res/neg-flow.nii.gz $model/$res/negdiff.nii.gz"
 eval $c
 
-# Absolute value of error vectors
-c="fslmaths $model/$res/diff.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normdiff.nii.gz"
+# Absolute value of error vectors, opposite
+c="fslmaths $model/$res/negdiff.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normnegdiff.nii.gz"
 eval $c
 
-# Absolute value of estimated displacement
-c="fslmaths $model/interp-field-*.*mm.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normgt.nii.gz"
+# Absolute value of estimated displacement, opposite
+c="fslmaths $model/interp-neg-field-*.*mm.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normneggt.nii.gz"
 eval $c
 
-# Relative absolute of error vectors
-c="fslmaths $model/$res/normdiff.nii.gz -div $model/$res/normgt.nii.gz $model/$res/normdiff-relative.nii.gz"
+# Relative absolute of error vectors, opposite
+c="fslmaths $model/$res/normnegdiff.nii.gz -div $model/$res/normneggt.nii.gz $model/$res/normnegdiff-relative.nii.gz"
 eval $c
 
 # Get parent directory of model directory
 patient=$(dirname $model)
 
 # Calculate mean of nonzero absolute error vector values in tumor segments
-c="fslstats -K $patient/Segmentation.nii.gz $model/$res/normdiff.nii.gz -M > $model/$res/mean-normdiff-segmentation.txt"
+c="fslstats -K $patient/Segmentation.nii.gz $model/$res/normnegdiff.nii.gz -M > $model/$res/mean-normnegdiff-segmentation.txt"
 eval $c
 
 # Calculate mean of nonzero relative absolute error vector values in tumor segments
-c="fslstats -K $patient/Segmentation.nii.gz $model/$res/normdiff-relative.nii.gz -M > $model/$res/mean-normdiff-relative-segmentation.txt"
+c="fslstats -K $patient/Segmentation.nii.gz $model/$res/normnegdiff-relative.nii.gz -M > $model/$res/mean-normnegdiff-relative-segmentation.txt"
 eval $c
