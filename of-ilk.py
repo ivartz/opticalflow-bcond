@@ -15,7 +15,7 @@ m = np.max([ref_d.max(), warp_d.max()])
 ref_d /= m
 warp_d /= m
 
-flow_d = optical_flow_ilk(ref_d, warp_d, radius=3)
+flow_d = optical_flow_ilk(ref_d, warp_d)
 
 # x, y, z, c component form
 flow_d = np.transpose(flow_d, (1, 2, 3, 0))
