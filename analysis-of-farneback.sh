@@ -17,7 +17,7 @@ model=$1
 res="offarneback"
 
 # Vectors to show the error: GT - estimated displacement, Opposite direction
-c="fslmaths $model/interp-neg-field-*.*mm.nii.gz -sub $model/$res/neg-flow.nii.gz $model/$res/negdiff.nii.gz"
+c="fslmaths $model/interp-field-*.*mm.nii.gz -sub $model/$res/neg-flow.nii.gz $model/$res/negdiff.nii.gz"
 eval $c
 
 # Absolute value of error vectors, opposite
@@ -25,7 +25,7 @@ c="fslmaths $model/$res/negdiff.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/norm
 eval $c
 
 # Absolute value of estimated displacement, opposite
-c="fslmaths $model/interp-neg-field-*.*mm.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normneggt.nii.gz"
+c="fslmaths $model/interp-field-*.*mm.nii.gz -sqr -Tmean -mul 3 -sqrt $model/$res/normneggt.nii.gz"
 eval $c
 
 # Relative absolute of error vectors, opposite
