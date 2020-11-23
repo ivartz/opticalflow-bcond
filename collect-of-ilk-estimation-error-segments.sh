@@ -5,9 +5,9 @@ dataset="/mnt/HDD3TB/derivatives/cancer-sim-SAILOR_PROCESSED_MNI-01"
 
 res="ofilk"
 if [ $1 -eq 0 ]; then
-    resfile="mean-normnegdiff-segmentation.txt"
+    resfile="median-normnegdiff-segmentation.txt"
 elif [ $1 -eq 1 ]; then
-    resfile="mean-normnegdiff-relative-segmentation.txt"
+    resfile="median-normnegdiff-relative-segmentation.txt"
 fi
 
 readarray -t errorfiles < <(find $dataset -type f -wholename *$res/$resfile | sort)
