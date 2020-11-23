@@ -8,7 +8,7 @@ patientdir=$1
 readarray -t models < <(find $patientdir -mindepth 1 -maxdepth 1 -type d)
 
 for model in ${models[*]}; do
-    c="bash analysis-of-tvl1.sh $model"
+    c="bash analysis-of-tvl1-justmedian.sh $model"
     if [ $run_evals == 1 ]; then
         eval $c
     fi
